@@ -32,209 +32,73 @@
 7. se tiver diferença no funcionamento dos servidores **sem** e **com** threads, analisar a diferença
 
 
-**data da entrega** 13/02/2025
+# Servidor Sem Threads
 
-#### 2.1. código servidor sem thread
-```python
-import http.server
+## Caso 1: Apenas 1 Cliente
 
-# Definir o conteúdo HTML fixo
-html_fixo = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Servidor HTTP Multithread</title>
-</head>
-<body>
-    <h1>Olá, mundo!</h1>
-    <p>Este é um servidor HTTP multithread em Python.</p>
-</body>
-</html>
-"""
+**Comportamento do Cliente:** O cliente consegue se conectar ao servidor e receber a resposta HTML sem problemas. A latência é mínima, pois não há concorrência.
 
-class MeuManipulador(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        # Imprimir informações da requisição no console
-        print(f"Requisição recebida de: {self.client_address}")
-        print(f"Caminho solicitado: {self.path}")
-        print("Cabeçalhos da requisição:")
-        for nome, valor in self.headers.items():
-            print(f"{nome}: {valor}")
+**Comportamento do Servidor:** O servidor processa a requisição de forma sequencial. Como há apenas um cliente, o servidor responde rapidamente e fica ocioso até a próxima requisição.
 
-        # Enviar resposta de código 200
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-        # Enviar o conteúdo HTML fixo
-        self.wfile.write(html_fixo.encode("utf-8"))
+## Caso 2: 2 Clientes Simultâneos
 
-# Definir o endereço e a porta do servidor
-endereco = ("", 8000)
+**Comportamento do Cliente:** O primeiro cliente recebe a resposta rapidamente, mas o segundo cliente pode experimentar um atraso, pois o servidor processa as requisições uma de cada vez.
 
-# Criar o servidor
-with http.server.HTTPServer(endereco, MeuManipulador) as httpd:
-    print("Servidor HTTP rodando na porta 8000...")
-    # Manter o servidor rodando
-    httpd.serve_forever()
+**Comportamento do Servidor:** O servidor processa a primeira requisição e só então começa a processar a segunda. Isso pode causar um atraso perceptível para o segundo cliente.
 
-```
+## Caso 3: 5 Clientes Simultâneos
 
-**Explicação do Código**
+**Comportamento do Cliente:** Os primeiros clientes podem receber respostas rapidamente, mas os últimos experimentarão atrasos significativos, pois o servidor processa cada requisição sequencialmente.
 
-Este código cria um servidor HTTP simples em Python que responde a requisições GET com um conteúdo HTML fixo. Vamos detalhar cada parte do código:
+**Comportamento do Servidor:** O servidor fica sobrecarregado, processando uma requisição por vez. Isso pode levar a tempos de resposta longos para os clientes que chegam depois.
 
-1. Importar o Módulo `import http.server`
-  - Fornece classes para criar servidores HTTP.
-2. Define uma string `html_fixo` com conteúdo HTML Fixo `html_fixo = """..."""`
-3. Criar a Classe Manipuladora de Requisições `class MeuManipulador(http.server.SimpleHTTPRequestHandler): ...`
-  - **Classe `MeuManipulador`**: Herda de `http.server.SimpleHTTPRequestHandler` e sobrescreve o método `do_GET` para tratar requisições GET.
-  - **Método `do_GET`**:
-    - **Imprimir Informações da Requisição**: Imprime no console o endereço IP do cliente (`self.client_address`), o caminho solicitado (`self.path`) e os cabeçalhos da requisição (`self.headers`).
-    - **Enviar Resposta de Código 200**: Usa `self.send_response(200)` para enviar uma resposta de código 200 (OK).
-    - **Definir o Cabeçalho `Content-type`**: Usa `self.send_header("Content-type", "text/html")` para definir o tipo de conteúdo como HTML.
-    - **Finalizar os Cabeçalhos**: Usa `self.end_headers()` para finalizar os cabeçalhos da resposta.
-    - **Enviar o Conteúdo HTML Fixo**: Usa `self.wfile.write(html_fixo.encode("utf-8"))` para enviar o conteúdo HTML fixo como resposta.
-4. Definir o Endereço e a Porta do Servidor `endereco = ("", 8000)`
-   - Define o endereço e a porta do servidor. Neste caso, o servidor escuta em todas as interfaces (`""`) na porta 8000.
-5. Criar e Executar o Servidor `with http.server.HTTPServer(endereco, MeuManipulador) as httpd: ...`
-   - **Criar o Servidor**: Usa `http.server.HTTPServer(endereco, MeuManipulador)` para criar uma instância do servidor HTTP, passando o endereço e a classe manipuladora.
-   - **Bloco `with`**: Garante que o servidor seja fechado corretamente ao final.
-   - **Manter o Servidor Rodando**: Usa `httpd.serve_forever()` para manter o servidor rodando indefinidamente, pronto para tratar requisições.
+## Caso 4: 10 Clientes Simultâneos
 
+**Comportamento do Cliente:** A maioria dos clientes experimentará atrasos consideráveis, especialmente os que chegam por último. Alguns clientes podem até atingir o timeout.
 
-#### 2.2. código servidor com thread
-```python
-import http.server
-import socketserver
-from socketserver import ThreadingMixIn
+**Comportamento do Servidor:** O servidor fica extremamente sobrecarregado, processando uma requisição por vez. Isso pode levar a tempos de resposta muito longos e possíveis falhas para alguns clientes.
 
-# Definir o conteúdo HTML fixo
-html_fixo = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Servidor HTTP Multithread</title>
-</head>
-<body>
-    <h1>Olá, mundo!</h1>
-    <p>Este é um servidor HTTP multithread em Python.</p>
-</body>
-</html>
-"""
+---
 
-class MeuManipulador(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        # Imprimir informações da requisição no console
-        print(f"Requisição recebida de: {self.client_address}")
-        print(f"Caminho solicitado: {self.path}")
-        print("Cabeçalhos da requisição:")
-        for nome, valor in self.headers.items():
-            print(f"{nome}: {valor}")
+# Servidor Com Threads
 
-        # Enviar resposta de código 200
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-        # Enviar o conteúdo HTML fixo
-        self.wfile.write(html_fixo.encode("utf-8"))
+## Caso 1: Apenas 1 Cliente
 
-class ThreadingHTTPServer(ThreadingMixIn, http.server.HTTPServer):
-    """Servidor HTTP que trata cada requisição em uma nova thread."""
-    daemon_threads = True
+**Comportamento do Cliente:** O cliente recebe a resposta rapidamente, sem atrasos perceptíveis.
 
-# Definir o endereço e a porta do servidor
-endereco = ("", 8000)
+**Comportamento do Servidor:** O servidor cria uma nova thread para lidar com a requisição, permitindo que o cliente seja atendido imediatamente.
 
-# Criar o servidor
-with ThreadingHTTPServer(endereco, MeuManipulador) as httpd:
-    print("Servidor HTTP multithread rodando na porta 8000...")
-    # Manter o servidor rodando
-    httpd.serve_forever()
+## Caso 2: 2 Clientes Simultâneos
 
-```
+**Comportamento do Cliente:** Ambos os clientes recebem respostas rapidamente, sem atrasos perceptíveis.
 
-**Explicação do código**
+**Comportamento do Servidor:** O servidor cria uma nova thread para cada requisição, permitindo que ambas sejam processadas simultaneamente.
 
-1. **Importar Módulos**:
-   - Importamos os módulos `http.server`, `socketserver` e `ThreadingMixIn`.
-2. **Definir o Conteúdo HTML Fixo**:
-   - Definimos uma string `html_fixo` contendo o HTML que será enviado como resposta.
-3. **Criar a Classe Manipuladora**:
-   - Criamos uma classe `MeuManipulador` que herda de `http.server.SimpleHTTPRequestHandler`.
-   - Sobrescrevemos o método `do_GET` para tratar requisições GET, imprimir informações da requisição no console e enviar o conteúdo HTML fixo.
-4. **Criar a Classe do Servidor Multithread**:
-   - Criamos uma classe `ThreadingHTTPServer` que herda de `ThreadingMixIn` e `http.server.HTTPServer`.
-   - `ThreadingMixIn` permite que cada requisição seja tratada em uma nova thread.
-   - `daemon_threads = True` garante que as threads daemon sejam encerradas quando o servidor principal for encerrado.
-5. **Definir o Endereço e a Porta do Servidor**:
-   - Definimos o endereço e a porta do servidor. Neste caso, o servidor escuta em todas as interfaces (`""`) na porta 8000.
-6. **Criar e Executar o Servidor**:
-   - Criamos uma instância de `ThreadingHTTPServer` passando o endereço e a classe manipuladora.
-   - Usamos um bloco `with` para garantir que o servidor seja fechado corretamente ao final.
-   - Chamamos `serve_forever` para manter o servidor rodando e pronto para tratar requisições.
+## Caso 3: 5 Clientes Simultâneos
 
+**Comportamento do Cliente:** Todos os clientes recebem respostas rapidamente, sem atrasos perceptíveis.
 
-#### 2.3. código cliente
-```python
-import http.client
+**Comportamento do Servidor:** O servidor cria uma nova thread para cada requisição, permitindo que todas sejam processadas simultaneamente.
 
-def fazer_requisicao_get():
-    # Conectar ao servidor localhost na porta 8000
-    conexao = http.client.HTTPConnection("localhost", 8000)
+## Caso 4: 10 Clientes Simultâneos
 
-    # Fazer a requisição GET
-    conexao.request("GET", "/")
+**Comportamento do Cliente:** Todos os clientes recebem respostas rapidamente, sem atrasos perceptíveis.
 
-    # Obter a resposta
-    resposta = conexao.getresponse()
+**Comportamento do Servidor:** O servidor cria uma nova thread para cada requisição, permitindo que todas sejam processadas simultaneamente. O servidor pode lidar com a carga sem problemas.
 
-    # Ler o conteúdo da resposta
-    conteudo = resposta.read()
+---
 
-    # Imprimir o status e o conteúdo da resposta
-    print(f"Status: {resposta.status}")
-    print(f"Motivo: {resposta.reason}")
-    print("Conteúdo:")
-    print(conteudo.decode("utf-8"))
+# Diferenças Entre Servidores Sem e Com Threads
 
-    # Fechar a conexão
-    conexao.close()
+- **Desempenho:** O servidor com threads apresenta um desempenho significativamente melhor em cenários com múltiplos clientes simultâneos. Ele consegue processar várias requisições ao mesmo tempo, enquanto o servidor sem threads processa uma requisição por vez, causando atrasos.
 
-# Chamar a função para fazer a requisição GET
-fazer_requisicao_get()
+- **Escalabilidade:** O servidor com threads é mais escalável, podendo lidar com um maior número de clientes simultâneos sem degradação significativa do desempenho. O servidor sem threads não escala bem, pois o tempo de resposta aumenta proporcionalmente ao número de clientes.
 
-```
+- **Complexidade:** O servidor com threads é mais complexo de implementar e gerenciar, devido à necessidade de lidar com concorrência e possíveis problemas de sincronização. O servidor sem threads é mais simples, mas menos eficiente em cenários de alta carga.
 
-**Explicação do código**
+---
 
-1. **Importar o Módulo `http.client`**:
-    - Importamos o módulo `http.client`, que fornece classes para fazer requisições HTTP.
+# Conclusão
 
-2. **Definir a Função `fazer_requisicao_get`**:
-    - Criamos uma função para fazer a requisição GET.
-
-3. **Conectar ao Servidor**:
-    - Usamos `http.client.HTTPConnection("localhost", 8000)` para conectar ao servidor `localhost` na porta 8000.
-
-4. **Fazer a Requisição GET**:
-    - Usamos `conexao.request("GET", "/")` para fazer a requisição GET para a raiz (`/`) do servidor.
-
-5. **Obter a Resposta**:
-    - Usamos `conexao.getresponse()` para obter a resposta do servidor.
-
-6. **Ler o Conteúdo da Resposta**:
-    - Usamos `resposta.read()` para ler o conteúdo da resposta.
-
-7. **Imprimir o Status e o Conteúdo da Resposta**:
-    - Imprimimos o status (`resposta.status`), o motivo (`resposta.reason`) e o conteúdo da resposta (`conteudo.decode("utf-8")`).
-
-8. **Fechar a Conexão**:
-    - Usamos `conexao.close()` para fechar a conexão.
-
-
-### 3. Experimento 2
-
-
-## Links
-- [http.server — HTTP servers](https://docs.python.org/3/library/http.server.html)
+O uso de threads no servidor HTTP melhora significativamente o desempenho e a escalabilidade, especialmente em cenários com múltiplos clientes simultâneos. Enquanto o servidor sem threads pode ser suficiente para cargas muito leves, ele não é adequado para cenários de alta concorrência. Portanto, a escolha entre usar ou não threads deve ser baseada na carga esperada e nos requisitos de desempenho do sistema.
 
